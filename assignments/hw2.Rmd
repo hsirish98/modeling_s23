@@ -1,0 +1,26 @@
+---
+title: "Assignment 2"
+author: "Hannah Irish & Nadine Snyder"
+date: "2023-04-25"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=TRUE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+library(tidyverse)
+```
+
+Read in the almonds data:
+```{r}
+data <- read.table(file = here::here("assignments/data/clim.txt"), header = TRUE)
+source(here::here("R/yields.R"))
+```
+
+
+Use the yields function
+```{r}
+test <- yields(data)
+```
+
+
+The min is `r test[[1]]`, the max is `r test[[2]]` and the mean is `r test[[3]]`
