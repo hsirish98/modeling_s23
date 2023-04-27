@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE, echo=TRUE, warning=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 library(tidyverse)
+library(purrr)
 ```
 
 Read in the almonds data:
@@ -20,6 +21,8 @@ source(here::here("R/yields.R"))
 Use the yields function
 ```{r}
 test <- yields(data)
+
+
 ```
 
 
