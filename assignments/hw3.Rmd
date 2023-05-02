@@ -41,72 +41,109 @@ We will test the profit function for some different almond selling prices and to
 ```{r}
 
 ##make vector of different prices
-prices <- rnorm(mean=5, sd = 0.1, n = 20)
+price <- rnorm(mean=5, sd = 0.1, n = 20)
+##make vector of different costs
+cost <- rnorm(mean=3.5, sd = 0.05, n = 20)
 
 
-##make list of the mean, min, max, using the different prices
-varying_price <- prices %>%
-  map(~alm_prof(price = .x, cost=3.5, dataset=clim_data))
+##combined sensitivity analysis
+
+price_cost <- cbind.data.frame(price, cost)
+
+results <- price_cost %>%
+  pmap(alm_prof,dataset=clim_data)
 
 
-##make a data frame for each yield type 
-min_df = map_df(varying_price,`[`, c("min"))
+results[[1]]
 
-max_df = map_df(varying_price,`[`, c("max"))
+mean_prof = map_df(results,`[`, c("mean")) 
+mean_prof = cbind(mean_prof, price_cost)
 
-mean_df = map_df(varying_price,`[`, c("mean"))
+min_prof = map_df(results,`[`, c("min"))
+min_prof = cbind(min_prof, price_cost)
 
-##combined dfs and make tidy
-all_3 <- cbind(prices, min_df, max_df, mean_df) %>%
-  pivot_longer(cols=c(2:4), values_to = "profit", names_to = "yield_type") %>%
-  mutate(varied_param = "price")
-
-##reseparate now that they're tidy, for ease of plotting
-means <- all_3 %>%
-  filter(yield_type=="mean")
-
-mins <- all_3 %>%
-  filter(yield_type=="min")
-
-maxes <- all_3 %>%
-  filter(yield_type=="max")
-
-##make plots for all three
-mean_plot<- ggplot(means, aes(x=prices, y = profit))+
-  geom_boxplot()+ labs(y = "Profit ($)", x="Value for Price", title= "Profit for Mean Yield (1988-2010)") +
-  theme_minimal()
-
-min_plot <- ggplot(mins, aes(x=prices, y = profit))+
-  geom_boxplot() + labs(y = "Profit ($)", x="Value for Price", title= "Profit for Min Yield (1988-2010)") +
-  theme_minimal()
-
-max_plot <- ggplot(maxes, aes(x=prices, y = profit))+
-  geom_boxplot() + labs(y = "Profit ($)", x="Value for Price", title= "Profit for Max Yield (1988-2010)") +
-  theme_minimal()
-
-##arrange in cowplot::plot_grid()
-library(cowplot)
-plot_element <- cowplot::plot_grid(mean_plot, max_plot, min_plot)
-
-##make title for plot_grid
-title <- ggdraw() + 
-  draw_label(
-    "Profits from Min/Max/Mean Almond Yields, Varied Selling Price of Almond",
-    fontface = 'bold',
-    x = 0,
-    hjust = 0
-  ) +
-  theme(
-    # add margin on the left of the drawing canvas,
-    # so title is aligned with left edge of first plot
-    plot.margin = margin(0, 0, 0, 7)
-  )
-plot_grid(
-  title, plot_element,
-  ncol = 1,
-  # rel_heights values control vertical title margins
-  rel_heights = c(0.1, 1)
-)
+max_prof = map_df(results,`[`, c("max")) 
+max_prof = cbind(max_prof, price_cost)
 
 ```
 
+```{r}
+p1 = ggplot(mean_prof, aes(price, mean, col=cost))+
+geom_point(cex=2) +
+  labs(x="Price", y="Profit", title="Mean Yield Anomaly")+
+  theme_minimal()
+
+
+p2 = ggplot(min_prof, aes(price, min, col=cost))+
+geom_point(cex=2) +
+  labs(x="Price", y="Profit", title="Min Yield Anomaly")+
+  theme_minimal()
+
+
+p3 = ggplot(max_prof, aes(price, max, col=cost))+
+geom_point(cex=2) +
+  labs(x="Price", y="Profit", title="Max Yield Anomaly")+
+  theme_minimal()
+
+c1 = ggplot(mean_prof, aes(cost, mean, col=price))+
+geom_point(cex=2) +
+  labs(x="Cost", y="Profit", title="Mean Yield Anomaly")+
+  theme_minimal()
+
+
+c2 = ggplot(min_prof, aes(cost, min, col=price))+
+geom_point(cex=2) +
+  labs(x="Cost", y="Profit", title="Min Yield Anomaly")+
+  theme_minimal()
+
+
+c3 = ggplot(max_prof, aes(cost, max, col=price))+
+geom_point(cex=2) +
+  labs(x="Cost", y="Profit", title="Max Yield Anomaly")+
+  theme_minimal()
+
+cowplot::plot_grid(p1,c2,p3,c1,p2,c3, nrow = 3)
+
+
+
+```
+
+```{r}
+bp_p1 = ggplot(mean_prof, aes(price, mean, col=cost))+
+geom_boxplot(color="cyan") +
+  labs(x="Price", y="Profit", title="Mean Yield Anomaly")+
+  theme_minimal()
+
+
+bp_p2 = ggplot(min_prof, aes(price, min, col=cost))+
+geom_boxplot(color="blue") +
+  labs(x="Price", y="Profit", title="Min Yield Anomaly")+
+  theme_minimal()
+
+
+bp_p3 = ggplot(max_prof, aes(price, max, col=cost))+
+geom_boxplot(color="purple") +
+  labs(x="Price", y="Profit", title="Max Yield Anomaly")+
+  theme_minimal()
+
+
+bp_c1 = ggplot(mean_prof, aes(cost, mean, col=cost))+
+geom_boxplot(color="cyan") +
+  labs(x="Cost", y="Profit", title="Mean Yield Anomaly")+
+  theme_minimal()
+
+bp_c2 = ggplot(min_prof, aes(cost, min))+
+geom_boxplot(color="blue") +
+  labs(x="Cost", y="Profit", title="Min Yield Anomaly")+
+  theme_minimal()
+
+bp_c3 = ggplot(max_prof, aes(cost, max, col=cost))+
+geom_boxplot(color="purple") +
+  labs(x="Cost", y="Profit", title="Max Yield Anomaly")+
+  theme_minimal()
+
+cowplot::plot_grid(bp_p1,bp_c1,bp_p2,bp_c2,bp_p3,bp_c3, nrow = 3)
+
+```
+
+Based on our analysis, it looks like Price is the more important parameter for the Almond Profit
