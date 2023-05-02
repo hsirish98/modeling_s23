@@ -19,7 +19,7 @@ yields <- function(dataset, P1=0.015, P2=0.0046, P3=0.07, P4=0.0043, P5=0.28){
   temp_feb <- as.data.frame(data) %>%
     filter(month==2) %>%
     group_by(year) %>%
-    summarise(min_temp = min(tmin_c))
+    summarise(min_temp = mean(tmin_c))
   
   precip_jan <- as.data.frame(data) %>%
     filter(month==1) %>%

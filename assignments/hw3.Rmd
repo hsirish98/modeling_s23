@@ -1,0 +1,40 @@
+---
+title: "Homework 3"
+author: "Hannah Irish"
+date: "2023-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(purrr)
+source(here::here("R/yields.R"))
+
+```
+
+
+
+```{r}
+clim_data <- read.table(file = here::here("assignments/data/clim.txt"), header = TRUE)
+```
+
+```{r}
+alm_prof <- function(price, cost=3.5, dataset){
+  
+  yield_list <- yields(dataset)
+   
+  min_prof = (yield_list[[1]])*price - (yield_list[[1]])*cost
+  max_prof = (yield_list[[2]])*price - (yield_list[[2]])*cost
+  mean_prof = (yield_list[[3]])*price - (yield_list[[3]])*cost
+  
+  return(list(min_prof, max_prof, mean_prof))
+  
+}
+```
+
+
+```{r}
+
+```
+
