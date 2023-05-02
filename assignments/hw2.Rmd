@@ -22,8 +22,7 @@ Use the yields function
 ```{r}
 test <- yields(data)
 
-
 ```
 
 
-The min is `r test[[1]]`, the max is `r test[[2]]` and the mean is `r test[[3]]`
+The min is `r test$min`, the max is `r test$max` and the mean is `r test$mean`

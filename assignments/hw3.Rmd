@@ -1,40 +1,112 @@
 ---
 title: "Homework 3"
-author: "Hannah Irish"
+author: "Hannah Irish & Nadine Snyder"
 date: "2023-05-02"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message= FALSE)
 library(tidyverse)
 library(purrr)
 source(here::here("R/yields.R"))
+source(here::here("R/alm_prof.R"))
 
 ```
 
 
-
+Read in Data
 ```{r}
+
+##read in almond data
 clim_data <- read.table(file = here::here("assignments/data/clim.txt"), header = TRUE)
+
 ```
 
+Use almond profit function on the data given in assignment 2 with a price per almond ton of $4
 ```{r}
-alm_prof <- function(price, cost=3.5, dataset){
-  
-  yield_list <- yields(dataset)
-   
-  min_prof = (yield_list[[1]])*price - (yield_list[[1]])*cost
-  max_prof = (yield_list[[2]])*price - (yield_list[[2]])*cost
-  mean_prof = (yield_list[[3]])*price - (yield_list[[3]])*cost
-  
-  return(list(min_prof, max_prof, mean_prof))
-  
-}
+
+##make sure alm_prof function works by using it in a simple case
+initial_profs <- alm_prof(price=4, cost=3.5,dataset=clim_data)
 ```
 
+Running the function the first time, we get that the min yield profit is `r initial_profs[[1]]`, the max yield profit is `r initial_profs[[2]]` and the mean yield profit is `r initial_profs[[3]]`
+
+
+
+### Sensitivity Analysis
+
+We will test the profit function for some different almond selling prices and to see how much it changes the profit for min, max, mean almond yields, since the demand for almonds might shift the market price for almonds one way or another
 
 ```{r}
+
+##make vector of different prices
+prices <- rnorm(mean=5, sd = 0.1, n = 20)
+
+
+##make list of the mean, min, max, using the different prices
+varying_price <- prices %>%
+  map(~alm_prof(price = .x, cost=3.5, dataset=clim_data))
+
+
+##make a data frame for each yield type 
+min_df = map_df(varying_price,`[`, c("min"))
+
+max_df = map_df(varying_price,`[`, c("max"))
+
+mean_df = map_df(varying_price,`[`, c("mean"))
+
+##combined dfs and make tidy
+all_3 <- cbind(prices, min_df, max_df, mean_df) %>%
+  pivot_longer(cols=c(2:4), values_to = "profit", names_to = "yield_type") %>%
+  mutate(varied_param = "price")
+
+##reseparate now that they're tidy, for ease of plotting
+means <- all_3 %>%
+  filter(yield_type=="mean")
+
+mins <- all_3 %>%
+  filter(yield_type=="min")
+
+maxes <- all_3 %>%
+  filter(yield_type=="max")
+
+##make plots for all three
+mean_plot<- ggplot(means, aes(x=prices, y = profit))+
+  geom_boxplot()+ labs(y = "Profit ($)", x="Value for Price", title= "Profit for Mean Yield (1988-2010)") +
+  theme_minimal()
+
+min_plot <- ggplot(mins, aes(x=prices, y = profit))+
+  geom_boxplot() + labs(y = "Profit ($)", x="Value for Price", title= "Profit for Min Yield (1988-2010)") +
+  theme_minimal()
+
+max_plot <- ggplot(maxes, aes(x=prices, y = profit))+
+  geom_boxplot() + labs(y = "Profit ($)", x="Value for Price", title= "Profit for Max Yield (1988-2010)") +
+  theme_minimal()
+
+##arrange in cowplot::plot_grid()
+library(cowplot)
+plot_element <- cowplot::plot_grid(mean_plot, max_plot, min_plot)
+
+##make title for plot_grid
+title <- ggdraw() + 
+  draw_label(
+    "Profits from Min/Max/Mean Almond Yields, Varied Selling Price of Almond",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, plot_element,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
 
 ```
 

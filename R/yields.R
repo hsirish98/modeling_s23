@@ -16,12 +16,12 @@
 yields <- function(dataset, P1=0.015, P2=0.0046, P3=0.07, P4=0.0043, P5=0.28){
 
   
-  temp_feb <- as.data.frame(data) %>%
+  temp_feb <- data.frame(dataset) %>%
     filter(month==2) %>%
     group_by(year) %>%
     summarise(min_temp = mean(tmin_c))
   
-  precip_jan <- as.data.frame(data) %>%
+  precip_jan <- data.frame(dataset) %>%
     filter(month==1) %>%
     group_by(year) %>%
     summarise(precip_sum = sum(precip))
@@ -38,10 +38,10 @@ yields <- function(dataset, P1=0.015, P2=0.0046, P3=0.07, P4=0.0043, P5=0.28){
   vector <- mapply(calculate_yield, temp=combine$min_temp, p=combine$precip_sum)
   
   ##calculate min, max, and mean with no na's
-  min <- min(vector, na.rm=TRUE)
-  max <- max(vector, na.rm=TRUE)
-  mean <- mean(vector, na.rm=TRUE)
+  min_val <- min(vector, na.rm=TRUE)
+  max_val <- max(vector, na.rm=TRUE)
+  mean_val <- mean(vector, na.rm=TRUE)
   
   ##return list of these three
-  return(list(min,max,mean))
+  return(list(min=min_val,max=max_val,mean=mean_val))
 }
