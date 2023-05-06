@@ -1,0 +1,45 @@
+---
+title: "A3"
+author: "Hannah Irish, Nadine Snyder, Zoe Rennie"
+date: "2023-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(sensitivity)
+library(lhs)
+library(purrr)
+```
+
+
+```{r LHS}
+source(here("R", "Catm.R"))
+# set a random seed to make things 'random'
+set.seed(1)
+# which parameters
+pnames = c("v", "height", "k_o", "k_d")
+# how many parameters
+npar =  length(pnames)
+# how many samples
+nsample = 100
+#randomize samples
+parm_quant = randomLHS(nsample, npar)
+#set column names
+colnames(parm_quant)=pnames
+#create LHS matrix for sampling from distributions
+parm = as.data.frame(matrix(nrow=nrow(parm_quant), ncol=ncol(parm_quant)))
+colnames(parm) = pnames
+pvar = 10
+#sample distributions
+parm[,"v"] = qnorm(parm_quant[,"v"], mean=250, sd=30)
+parm[,"height"] = qunif(parm_quant[,"height"], min=950, max=1050)
+parm[,"k_o"] = qnorm(parm_quant[,"k_o"], mean=.1, sd=.1*.01)
+parm[,"k_d"] = qnorm(parm_quant[,"k_d"], mean=.7, sd=.7*.01)
+#check samples
+head(parm)
+#run samples with model
+conductance <- parm %>% pmap(Catm) 
+conductance
+```
