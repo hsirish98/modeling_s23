@@ -1,0 +1,110 @@
+---
+title: "A3"
+author: "Hannah Irish, Nadine Snyder, Zoe Rennie"
+date: "2023-05-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(sensitivity)
+library(lhs)
+library(purrr)
+library(tidyverse)
+```
+
+
+Setting up for variable sensitivity analysis and running the Catm function with the ranges of values:
+```{r LHS}
+source(here("R", "Catm.R"))
+# set a random seed to make things 'random'
+set.seed(1)
+# which parameters
+pnames = c("v", "height", "k_o", "k_d")
+# how many parameters
+npar =  length(pnames)
+# how many samples
+nsample = 100
+#randomize samples
+parm_quant = randomLHS(nsample, npar)
+#set column names
+colnames(parm_quant)=pnames
+#create LHS matrix for sampling from distributions
+parm = as.data.frame(matrix(nrow=nrow(parm_quant), ncol=ncol(parm_quant)))
+colnames(parm) = pnames
+pvar = 10
+#sample distributions
+parm[,"v"] = qnorm(parm_quant[,"v"], mean=.25, sd=.03)
+parm[,"height"] = qunif(parm_quant[,"height"], min=9.5, max=10.5)
+parm[,"k_o"] = qnorm(parm_quant[,"k_o"], mean=.1, sd=.1*.01)
+parm[,"k_d"] = qnorm(parm_quant[,"k_d"], mean=.7, sd=.7*.01)
+#check samples
+head(parm)
+#run samples with model
+conductance <- parm %>% pmap(Catm) 
+conductance
+```
+
+Plotting the conductance estimates:
+```{r}
+##convert conductance list to data frame
+conductance_df <- data.frame(conductance)
+##make tidy and select desired column
+conductance_tidy <- conductance_df %>%
+  pivot_longer(cols=(1:ncol(conductance_df)), names_to = "junk_col", values_to = "conductance") %>%
+  select(2)
+##combine with parm data frame to plot appropriately
+plot_df <- cbind(conductance_tidy, parm)
+```
+
+
+
+```{r}
+##setting up box plots for each variable to show uncertainty
+k_d_boxplot <- ggplot(plot_df, aes(x = cut_interval(x=k_d, length=.01), y = conductance)) +
+  geom_boxplot(color = "blue") +
+  labs(x= "Value for Kd", y="Conductance", color="Conductance")+
+  theme_minimal()
+k_o_boxplot <- ggplot(plot_df, aes(x = cut_interval(x=k_o, length=.01), y = conductance)) +
+  geom_boxplot(color = "purple") +
+  labs(x= "Value for Ko",y="Conductance", color="Conductance")+
+  theme_minimal()
+v_boxplot <- ggplot(plot_df, aes(x = cut_interval(x=v, length=.06), y = conductance)) +
+  geom_boxplot(color = "gold") +
+  labs(x= "Wind Speed", y="Conductance", color="Conductance")+
+  theme_minimal()
+height_boxplot <- ggplot(plot_df, aes(x = cut_interval(x=height, length=1), y = conductance)) +
+  geom_boxplot(color = "cyan4") +
+  labs(x= "Vegetation Height", y="Conductance", color="Conductance")+
+  theme_minimal() + theme(axis.text.x = element_text(angle = 30))
+##plot all 4 boxplots together
+cowplot::plot_grid(k_d_boxplot, k_o_boxplot, v_boxplot, height_boxplot)
+```
+
+
+```{r}
+##setting up plots that show every variable against conductance
+k_d_plot <- ggplot(plot_df, aes(x = k_d, y = conductance)) +
+  geom_point(aes(color = conductance)) +
+  scale_color_gradient() +
+  labs(x= "Value for Kd", y="Conductance", color="Conductance")+
+  theme_minimal()
+k_o_plot <- ggplot(plot_df, aes(x = k_o, y = conductance)) +
+  geom_point(aes(color = conductance)) +
+  scale_color_gradient() +
+  labs(x= "Value for Ko",y="Conductance", color="Conductance")+
+  theme_minimal()
+v_plot <- ggplot(plot_df, aes(x = v, y = conductance)) +
+  geom_point(aes(color = conductance)) +
+  scale_color_gradient() +
+  labs(x= "Wind Speed", y="Conductance", color="Conductance")+
+  theme_minimal()
+height_plot <- ggplot(plot_df, aes(x = height, y = conductance)) +
+  geom_point(aes(color = conductance)) +
+  scale_color_gradient() +
+  labs(x= "Vegetation Height", y="Conductance", color="Conductance")+
+  theme_minimal()
+##Plot all 4 variable plots against one another
+cowplot::plot_grid(k_d_plot, k_o_plot, v_plot, height_plot)
+```
