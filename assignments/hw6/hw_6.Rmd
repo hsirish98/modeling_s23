@@ -1,0 +1,162 @@
+---
+title: 'Assignment 6: Sobel with ODE'
+author: "Hannah Irish & Nadine Snyder"
+date: "2023-05-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+library(here)
+source(here("R/forest_growth.R"))
+
+```
+
+
+Run first iteration with given parameter levels
+```{r}
+
+##set parameters (carrying capacity (K) of 250, growth rate of 1%, linear growth rate of 2)
+parms = list(K=250, r=0.01, g=2)
+
+##set initial size of forest (10kg/C)
+init_size = 10
+
+##choose time period of 300 years to run the model
+tm = seq(from=1, to =300)
+
+##run the model for 300 years 
+forest = data.frame(ode(y=init_size, times=tm, forest_growth, parms=parms))
+colnames(forest)[2] = "C"
+
+```
+
+Graph Results
+```{r}
+##Plot with threshold line 
+ggplot(forest, aes(time, C))+
+  geom_point() + 
+  geom_hline(yintercept = 50, color ="red", label="Threshold") + 
+  annotate("text", x=9, y=60, label="Threshold", color="red")+
+  labs(x= "Time (Year)", y="Forest Size (kg/C)", title= "Trajectory of Forest Parameters with No Uncertainty")+
+  theme_minimal()
+```
+
+```{r}
+
+#set initial population
+Cinitial=10 
+
+# want to learn about sensitivity to growth rate (r), linear growth rate (g) and carrying capacity (K)
+# set the number of parameters
+np=2000
+K = rnorm(mean=250, sd=0.1, n=np)
+r = rnorm(mean=0.01, sd=0.1, n=np)
+g= rnorm(mean=2, sd=0.1, n=np)
+X1 = cbind.data.frame(r=r, K=K, g=g)
+
+# repeat to get our second set of samples
+K = rnorm(mean=200, sd=0.1, n=np)
+r = rnorm(mean=0.05, sd=0.1, n=np)
+g= rnorm(mean=2, sd=0.1, n=np)
+X2 = cbind.data.frame(r=r, K=K, g=g)
+
+# fix any negative values and they are not meaningful
+X1 = X1 %>% map_df(pmax, 0.0)
+X2 = X2 %>% map_df(pmax, 0.0)
+
+# create our sobel object and get sets of parameters for running the model
+
+sens_C = sobolSalt(model = NULL,X1, X2, nboot = 300)
+
+
+# add colnames 
+colnames(sens_C$X) = c("r","K", "g")
+
+# gets results for 300 years (evaluating every year)
+simtimes = seq(from=1, to=300)
+parms = list(r=sens_C$X[1,"r"], K=sens_C$X[1,"K"], g=sens_C$X[1, "g"])
+
+
+colnames(result)=c("time","C")
+# turn it into a data frame
+result = as.data.frame(result)
+
+
+# maximum population it gets to
+maxC = max(result$C)
+
+```
+
+
+
+```{r sen2}
+# metrics function
+
+compute_metrics = function(result, thresh) {
+  maxC = max(result$C)
+idx = which(result$C > thresh)[1]
+idx = ifelse(is.na(idx), length(result$C), idx)
+threshyear = result$time[idx]
+return(list(maxC=maxC, threshyear=threshyear))}
+
+
+# wrapper function to do everything
+
+# making threshold double the canopy closure threshold
+
+C_wrapper = function(r,K,g, Cinitial, simtimes, func) {
+    parms = list(r=r, K=K, g=g)
+    result = ode(y=Cinitial, times=simtimes, func=func, parms=parms) 
+    colnames(result)=c("time","C")
+  # get metrics
+  metrics=compute_metrics(as.data.frame(result), thresh=100)
+  return(metrics)
+}
+
+# use pmap
+
+allresults = as.data.frame(sens_C$X) %>% pmap(C_wrapper, Cinitial=Cinitial, simtimes=simtimes, func=forest_growth)
+
+# extract out results from pmap into a data frame
+allres = allresults %>% map_dfr(`[`,c("maxC","threshyear"))
+
+
+# create boxplots
+tmp = allres %>% pivot_longer(cols=everything(),names_to="metric", values_to="value")
+ggplot(tmp, aes(metric, value, col=metric))+geom_boxplot()
+```
+
+
+
+```{r sen3}
+
+sens_C_maxC = sensitivity::tell(sens_C,allres$maxC)
+
+# first-order indices (main effect without co-variance)
+sens_C_maxC$S
+
+# total sensitivity index -note that this partitions the output variance 
+sens_C_maxC$T
+
+
+
+# create another one for max year
+sens_C_threshyear = sensitivity::tell(sens_C,allres$threshyear)
+# first-order indices (main effect without co-variance)
+sens_C_threshyear$S
+
+# total sensitivity index -note that this partitions the output variance - so values sum to 1
+sens_C_threshyear$T
+
+```
+
+
+
+If climate change worsens, it is likely that the growth rate of the forest might be smaller, and it will reach the threshold growth in a longer time (or not reach it at all). Alternately, if K were smaller, the canopy time would be a fraction of what we found for max carrying capacity and the change to linear growth would happen at an earlier stage.
+
+
+
