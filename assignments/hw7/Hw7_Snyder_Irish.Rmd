@@ -1,0 +1,191 @@
+---
+title: "HW 7: Stability"
+author: "Hannah Irish & Nadine Snyder"
+date: "2023-06-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(deSolve)
+library(cowplot)
+
+source(here("R/lotvmodK.R"))
+```
+
+### Stability
+
+
+Set initial conditions
+```{r}
+
+##parameters
+pars = data.frame(rprey=0.95, alpha=0.01, eff=0.6,pmort=0.4, K=2000)
+
+##over 500 days
+days = seq(from=1, to=500)
+
+##current population
+currpop = c(prey=90, pred=30)
+
+```
+
+
+No Hunting:
+```{r}
+
+##with initial function and no hunting
+initial = ode(func=lotvmodK, y=currpop, times=days, parms=pars)
+
+##make data frame
+initial_df = as.data.frame(initial) %>% gather(key="animal", value="pop",-time)
+
+##make plot
+initial_plot <- ggplot(initial_df, aes(time, pop, col=animal))+
+  geom_line() +
+  theme_minimal()
+```
+
+Vary initial populations:
+
+```{r}
+
+##with different populations
+
+##even populations of prey and predator
+currpop = c(prey=30, pred=30)
+
+same_start = ode(func=lotvmodK, y=currpop, times=days, parms=pars)
+
+same_start_df = as.data.frame(same_start) %>% gather(key="animal", value="pop",-time)
+
+same_start_plot <- ggplot(same_start_df, aes(time, pop, col=animal))+
+  geom_line() +
+  theme_minimal()
+
+
+##4x as many prey
+currpop = c(prey=200, pred=50)
+
+manyprey = ode(func=lotvmodK, y=currpop, times=days, parms=pars)
+
+manyprey_df = as.data.frame(manyprey) %>% gather(key="animal", value="pop",-time)
+
+manyprey_plot <- ggplot(manyprey_df, aes(time, pop, col=animal))+
+  geom_line() +
+  theme_minimal()
+
+#5x as many predators
+currpop = c(prey=200, pred=1000)
+
+manypred = ode(func=lotvmodK, y=currpop, times=days, parms=pars)
+
+manypred_df = as.data.frame(manypred) %>% gather(key="animal", value="pop",-time)
+
+manypred_plot <- ggplot(manypred_df, aes(time, pop, col=animal))+
+  geom_line() +
+  theme_minimal()
+
+##Plot
+
+plot_grid(initial_plot, same_start_plot, manyprey_plot, manypred_plot)
+
+
+
+```
+Both populations stay fairly stable under the original Lotka Volterra model with the given interaction rate. We estimate a hunting rate on the lower side will help keep stability so we don't lose too many prey.
+
+With how we added the hunting rate, if there are enough prey, X% (X= hunting rate) of the population will die from being hunted by predators.
+
+Run ODE Solver with hunt rate of 20%
+```{r}
+##add hunting rate of 20%
+
+pars = data.frame(rprey=0.95, alpha=0.01, eff=0.6,pmort=0.4, K=2000, huntr = 0.2)
+res = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+res_df = as.data.frame(res) %>% gather(key="animal", value="pop",-time)
+
+p1=ggplot(res_df, aes(time, pop, col=animal))+
+  geom_line() +
+  theme_minimal()
+
+p1
+```
+
+We will define stability as each population being maximum 50% of the other population (cannot be more than double the other population) and both populations must still have members by the end of the time period (can't die out)
+
+
+Try different hunting rates
+```{r}
+
+##hunting rate of 90% then 70%, 50%, 30%, 10%
+pars$huntr = 0.9
+
+nine = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+nine_df = as.data.frame(nine) %>% gather(key="animal", value="pop",-time)
+
+nine_plot = ggplot(nine_df, aes(time, pop, col=animal))+
+  geom_line() +
+  labs(title = "Hunt Rate of 90%") +
+  theme_minimal()
+
+pars$huntr = 0.7
+
+seven = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+seven_df = as.data.frame(seven) %>% gather(key="animal", value="pop",-time)
+
+seven_plot = ggplot(seven_df, aes(time, pop, col=animal))+
+  geom_line() +
+  labs(title = "Hunt Rate of 70%") +
+  theme_minimal()
+
+pars$huntr = 0.5
+
+five = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+five_df = as.data.frame(five) %>% gather(key="animal", value="pop",-time)
+
+five_plot = ggplot(five_df, aes(time, pop, col=animal))+
+  geom_line() +
+  labs(title = "Hunt Rate of 50%") +
+  theme_minimal()
+
+pars$huntr = 0.3
+
+three = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+three_df = as.data.frame(three) %>% gather(key="animal", value="pop",-time)
+
+three_plot = ggplot(three_df, aes(time, pop, col=animal))+
+  geom_line() +
+  labs(title = "Hunt Rate of 30%") +
+  theme_minimal()
+
+pars$huntr = 0.1
+
+one = ode(func=lotvmodK_hunt, y=currpop, times=days, parms=pars)
+
+one_df = as.data.frame(one) %>% gather(key="animal", value="pop",-time)
+
+one_plot = ggplot(one_df, aes(time, pop, col=animal))+
+  geom_line() +
+  labs(title = "Hunt Rate of 10%") +
+  theme_minimal()
+
+cowplot::plot_grid(nine_plot, seven_plot, five_plot, three_plot, one_plot, cols = 2)
+
+
+```
+Higher hunting rates do not satisfy stability. Predators eat too many prey and pretty much die out as a result.
+
+Once the hunting rate gets down to about 50% and below, the conditions start satisfying stability. 
+
+For sustainable hunting, predators shouldn't be able to eliminate more than 50% of the prey population in a given time period at an interaction rate of 0.01.
+
+
+
